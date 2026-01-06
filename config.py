@@ -11,23 +11,14 @@ from pathlib import Path
 # -------------------------
 
 # 可选: "colab", "local", "server"
-ENV = os.getenv("LIT_AGENT_ENV", "colab")
+ENV = os.getenv("LLM_AGENT_ENV", "local")
 
-
+PROJECT_ROOT = Path(__file__).resolve().parent
 # -------------------------
 # 2. Paths (Zotero)
 # -------------------------
 
-if ENV == "colab":
-    ZOTERO_ROOT = Path("/content/ID2223-Project/zotero")
-elif ENV == "local":
-    ZOTERO_ROOT = Path("~/zotero").expanduser()
-else:  # server
-    ZOTERO_ROOT = Path("/data/zotero")
-
-RDF_PATH = ZOTERO_ROOT / "location privacy.rdf"
-BASE_DIR = ZOTERO_ROOT
-
+CSV_PATH = PROJECT_ROOT / "PCG.csv"
 
 # -------------------------
 # 3. Embedding Model
@@ -50,10 +41,9 @@ CHUNK_OVERLAP = 100
 # 5. Hopsworks
 # -------------------------
 
-HOPSWORKS_PROJECT = os.getenv("HOPSWORKS_PROJECT", "Article_agent")
+# HOPSWORKS_PROJECT = os.getenv("HOPSWORKS_PROJECT", "Article_agent")
 
-# API Key 永远不写死
-HOPSWORKS_API_KEY = os.getenv("1QJZ515qO3Hl6pwr.Kr6HwXJ5SbnYV6TeEyAEyDGsV31Is9rryhZUyvRjamJjodvONIodYhBskNcZxHAz")
+HOPSWORKS_API_KEY = os.getenv("HOPSWORKS_API_KEY")
 
 
 # -------------------------
