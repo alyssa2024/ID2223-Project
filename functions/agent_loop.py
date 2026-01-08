@@ -1,6 +1,6 @@
 import json
-from agent_state import AgentState
-from reasoning_schema import ReasoningOutput
+from functions.agent_state import AgentState
+from functions.reasoning_schema import ReasoningOutput
 
 
 class AgenticInference:
