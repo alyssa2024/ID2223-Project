@@ -22,13 +22,13 @@ The system integrates four layers:
 
 ### For every user question, it will begin a loop of reasoning and select one of the actions listed below:
 
-### * Direct Answer
+### 1.Direct Answer
 Used when the question is **conceptual** or does **not require stored papers**.
 
-### * RAG Retrieval
+### 2.RAG Retrieval
 Used when the answer **depends on paper content** and must be retrieved from the vector database.
 
-### * Tool Call (MCP)
+### 3.Tool Call (MCP)
 Used when the question **requires interacting with structured data**, such as:
 - checking which papers exist
 - detecting newly added papers
@@ -41,7 +41,7 @@ Used when the question **requires interacting with structured data**, such as:
 
 ### Two Feature Groups form the backbone of the system.
 
-### 1 Paper Metadata Feature Group
+### 1.Paper Metadata Feature Group
 
 This Feature Group stores **one record per paper**.
 
@@ -57,7 +57,7 @@ This Feature Group is used when the agent needs:
 - Filtering by author, year, or topic  
 - Citation-style information  
 
-### 2 Paper Chunk Embedding Feature Group
+### 2.Paper Chunk Embedding Feature Group
 
 This Feature Group stores **semantic representations of paper content**.
 
@@ -73,7 +73,7 @@ It is used for:
 - Context injection into Qwen-8B  
 
 
-### 3 How the Agent Chooses
+### 3.How the Agent Chooses
 
 The agent decides which Feature Group to use based on the intent of the question.
 
