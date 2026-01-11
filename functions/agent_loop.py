@@ -37,11 +37,31 @@ class AgenticInference:
                 )
                 state.retrieval_results = results
                 state.last_retrieval_type = "metadata"
+# agent_loop.py
+
+            if state.last_retrieval_type == "metadata":
+                state.candidate_papers = {
+                    r["paper_id"] for r in state.retrieval_results if "paper_id" in r
+                }
+
+                # 🔴 强制进入 chunk search
+                state.retrieval_results = self.mcp.dispatch(
+                    action="search_chunks",
+                    query=state.canonical_query,
+                    k=10,
+                    paper_ids=list(state.candidate_papers),
+                )
+                state.last_retrieval_type = "chunks"
+                continue
 
             # --- Build context ---
-            state.context_bundle = self.context_builder.build(
-                state.retrieval_results
-            )
+            if state.last_retrieval_type == "chunks":
+                state.context_bundle = self.context_builder.build(
+                    state.retrieval_results
+                )
+            else:
+                state.context_bundle = None
+
 
             print("=== CONTEXT BUNDLE ===")
             print(state.context_bundle)
@@ -72,12 +92,15 @@ class AgenticInference:
             # --- Decision ---
             # decision = reasoning["decision"]
             decision = reasoning["decision"]
-            rationale = reasoning.get("reasoning", {}).get("decision_rationale")
+            rationale = reasoning.get("reasoning", {}).get("rationale")
 
             print("=== AGENT REASONING ===")
             print("Decision:", decision)
             print("Rationale:", rationale)
             print("======================")
+
+            if decision == "answer" and state.last_retrieval_type != "chunks":
+                raise RuntimeError("Answer generated without chunk-level evidence")
 
             # --- ANSWER ---
             if decision == "answer":
@@ -102,7 +125,7 @@ class AgenticInference:
                 )
 
                 state.retrieval_results = results
-                
+
                 print("=== RETRIEVAL RESULTS ===")
                 print(state.retrieval_results[:2])
                 print("=========================")
@@ -135,10 +158,17 @@ class AgenticInference:
             #     state.terminated = True
             #     state.termination_reason = "Abstained"
             #     return "I cannot answer this question with the available information."
+            # elif decision == "abstain":
+            #     rationale = reasoning.get("reasoning", {}).get("rationale")
+            #     if not rationale:
+            #         raise RuntimeError("ABSTAIN without decision_rationale — schema mismatch")
             elif decision == "abstain":
-                rationale = reasoning.get("reasoning", {}).get("decision_rationale")
-                if not rationale:
-                    raise RuntimeError("ABSTAIN without decision_rationale — schema mismatch")
-
+                state.terminated = True
+                state.termination_reason = "Abstained due to insufficient evidence"
+                return {
+                    "answer": None,
+                    "rationale": rationale,
+                    "citations": []
+                }
 
         return "Inference terminated without a confident answer."

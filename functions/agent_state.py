@@ -15,7 +15,7 @@ class AgentState:
     retrieval_results: List[Dict[str, Any]] = field(default_factory=list)
     candidate_papers: Set[str] = field(default_factory=set)
 
-    # last_retrieval_type: Optional[str] = None
+    last_retrieval_type: Optional[str] = None
 
     # --- Context ---
     context_bundle: Optional[Dict[str, Any]] = None

@@ -28,11 +28,13 @@ def launch_agent_ui(agent):
 
         # ---- normalize agent output ----
         if isinstance(result, dict):
-            answer = result.get("answer", "")
+            answer = result.get("answer")  # may be None
             citations = result.get("citations", [])
+            rationale = result.get("rationale", "")
         else:
             answer = str(result)
             citations = []
+            rationale = ""
 
         # ---- build citation block ----
         citation_block = ""
@@ -43,7 +45,15 @@ def launch_agent_ui(agent):
                 snippet = c.get("content", "")[:500]
                 citation_block += f"\n[{i}] `{source_id}`\n{snippet}\n"
 
-        full_answer = answer + citation_block
+        # ---- build final answer safely ----
+        if answer is None:
+            # Abstain or no-answer case
+            full_answer = (
+                "I cannot answer this question based on the retrieved evidence.\n\n"
+                f"**Reason:** {rationale}"
+            )
+        else:
+            full_answer = answer + citation_block
 
         # ---- append assistant message ----
         history.append(

@@ -71,10 +71,20 @@ RETRIEVED EVIDENCE
 REASONING INSTRUCTIONS
 ========================
 
+Before listing required information:
+
+- Identify the CORE concept of the question (what the question is fundamentally about).
+- Identify any MODIFIERS (e.g., application domain such as ECG, PCG, image, audio).
+- The CORE concept must be supported by evidence.
+- MODIFIERS do NOT need to be explicitly mentioned in the evidence
+  if the evidence is reasonably applicable to that domain.
+
+
 You MUST follow these steps explicitly:
 
 1. List what information is REQUIRED to answer the question.
-2. For each required item, check whether it is present in the retrieved evidence.
+2. For each required item, check whether it is present OR reasonably supported
+   by the retrieved evidence.
 3. Cite the specific paper_id(s) used for each fact.
 4. Decide ONE of the following actions:
    - "answer"
@@ -83,9 +93,14 @@ You MUST follow these steps explicitly:
    - "abstain"
 
 IMPORTANT CONSTRAINTS:
-- You may ONLY choose "abstain" if you clearly explain what information is missing.
-- If ANY partial answer is possible from the evidence, prefer "answer".
 - Do NOT hallucinate facts not present in evidence.
+- Abstracts and method descriptions ARE valid evidence.
+- If the evidence discusses general GAN training challenges,
+  and these challenges are applicable to ECG signal generation,
+  you MAY answer by clearly stating the scope of applicability.
+- Prefer "answer" if the core concept of the question is supported,
+  even if some qualifiers (e.g., specific modality) are implicit.
+- Use "abstain" ONLY if the core concept is completely unsupported.
 
 ========================
 OUTPUT FORMAT (STRICT)
@@ -99,7 +114,7 @@ Return VALID JSON ONLY.
     "required_information": [ ... ],
     "evidence_analysis": [ ... ],
     "missing_information": [ ... ],
-    "decision_rationale": "..."
+    "rationale": "..."
   }},
   "answer": "<only if decision == answer, otherwise null>"
 }}

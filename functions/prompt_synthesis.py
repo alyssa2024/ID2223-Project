@@ -66,6 +66,8 @@ class PromptSynthesizer:
     - Do NOT abstain due to uncertainty alone.
     - Use abstain ONLY if the context is empty or completely irrelevant.
     - Follow the output format EXACTLY.
+    - Metadata (title/abstract) is NOT sufficient evidence.
+    - If only metadata-level information is present, you MUST request search_chunks before answering.
     """.strip()
 
     def _output_schema(self) -> str:

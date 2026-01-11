@@ -116,50 +116,81 @@ class SimilaritySearchEngine:
                     "title": row.get("title"),
                     "abstract": row.get("abstract"),
                     # "score": row.get("distance", row.get("score")),
-                    "score": 1.0 / (rank + 1),
+                    "score": row.get("distance", 1.0 / (rank + 1)),
                 }
             )
 
         return results
 
 
+    # def search_chunks(self, query: str, k: int = 20, paper_ids=None):
+    #     query_embedding = self._embed_query(query)
+
+    #     filter_query = None
+    #     if paper_ids:
+    #         filter_query = {
+    #             "bool": {
+    #                 "must": [
+    #                     {"terms": {"paper_id": paper_ids}}
+    #                 ]
+    #             }
+    #         }
+
+    #     if filter_query is not None:
+    #         neighbors = self.chunk_fv.find_neighbors(
+    #             query_embedding,
+    #             k=k,
+    #             filter=filter_query,
+    #         )
+    #     else:
+    #         neighbors = self.chunk_fv.find_neighbors(
+    #             query_embedding,
+    #             k=k,
+    #         )
+
+    #     rows = self._normalize_neighbors(neighbors, self.chunk_fv)
+
+    #     results = []
+    #     for rank, row in enumerate(rows):
+    #         results.append(
+    #             {
+    #                 "paper_id": row.get("paper_id"),
+    #                 "chunk_index": row.get("chunk_index"),
+    #                 "content": row.get("content"),
+    #                 # "score": row.get("distance", row.get("score")),
+    #                 "score": 1.0 / (rank + 1),
+    #             }
+    #         )
+
+    #     return results
     def search_chunks(self, query: str, k: int = 20, paper_ids=None):
         query_embedding = self._embed_query(query)
 
-        filter_query = None
-        if paper_ids:
-            filter_query = {
-                "bool": {
-                    "must": [
-                        {"terms": {"paper_id": paper_ids}}
-                    ]
-                }
-            }
-
-        if filter_query is not None:
-            neighbors = self.chunk_fv.find_neighbors(
-                query_embedding,
-                k=k,
-                filter=filter_query,
-            )
-        else:
-            neighbors = self.chunk_fv.find_neighbors(
-                query_embedding,
-                k=k,
-            )
+        neighbors = self.chunk_fv.find_neighbors(
+            query_embedding,
+            k=k,
+        )
 
         rows = self._normalize_neighbors(neighbors, self.chunk_fv)
 
         results = []
         for rank, row in enumerate(rows):
+            if paper_ids and row.get("paper_id") not in paper_ids:
+                continue
+
+            content = row.get("content")
+            if not content or not str(content).strip():
+                continue
+
             results.append(
                 {
                     "paper_id": row.get("paper_id"),
                     "chunk_index": row.get("chunk_index"),
-                    "content": row.get("content"),
-                    # "score": row.get("distance", row.get("score")),
-                    "score": 1.0 / (rank + 1),
+                    "content": content,
+                    "score": row.get("distance", 1.0 / (rank + 1)),
                 }
             )
 
         return results
+
+

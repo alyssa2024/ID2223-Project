@@ -54,6 +54,10 @@ class ContextBuilder:
                 continue
 
             content = self._normalize_text(chunk.get("content", ""))
+            
+            if not content:
+                continue
+
             tokens = self._estimate_tokens(content)
 
             if token_count + tokens > self.max_tokens:
