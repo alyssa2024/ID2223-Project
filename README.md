@@ -20,15 +20,15 @@ The system integrates four layers:
 
 ### Qwen-8B operates as a **decision-making agent**, not a plain chatbot.
 
-### For every user question, it reasons between three possible actions:
+### For every user question, it will begin a loop of reasoning and select one of the actions listed below:
 
-### 1. Direct Answer
+### * Direct Answer
 Used when the question is **conceptual** or does **not require stored papers**.
 
-### 2. RAG Retrieval
+### * RAG Retrieval
 Used when the answer **depends on paper content** and must be retrieved from the vector database.
 
-### 3. Tool Call (MCP)
+### * Tool Call (MCP)
 Used when the question **requires interacting with structured data**, such as:
 - checking which papers exist
 - detecting newly added papers
