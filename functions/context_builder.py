@@ -38,56 +38,51 @@ class ContextBuilder:
         self,
         retrieved_chunks: List[Dict[str, Any]],
     ) -> Dict[str, Any]:
-        """
-        Build structured context from retrieved chunks.
-        """
-        # 1. Sort by similarity score (lower distance = more similar)
+
         sorted_chunks = sorted(
             retrieved_chunks,
             key=lambda x: x.get("score", float("inf")),
         )
 
-        contexts: List[Dict[str, Any]] = []
-        seen_keys = set()
+        items = []
+        seen = set()
         token_count = 0
 
         for chunk in sorted_chunks:
             key = (chunk["paper_id"], chunk.get("chunk_index"))
-
-            if key in seen_keys:
+            if key in seen:
                 continue
 
-            content = self._normalize_text(chunk["content"])
+            content = self._normalize_text(chunk.get("content", ""))
             tokens = self._estimate_tokens(content)
 
             if token_count + tokens > self.max_tokens:
                 break
 
-            contexts.append(
+            items.append(
                 {
+                    "source_id": f"{chunk['paper_id']}#chunk-{chunk.get('chunk_index')}",
                     "paper_id": chunk["paper_id"],
-                    "chunk_index": chunk.get("chunk_index"),
                     "content": content,
                     "score": chunk.get("score"),
                 }
             )
 
-            seen_keys.add(key)
+            seen.add(key)
             token_count += tokens
 
-            if len(contexts) >= self.max_chunks:
+            if len(items) >= self.max_chunks:
                 break
 
         return {
-            "contexts": contexts,
+            "items": items,
             "stats": {
-                "num_contexts": len(contexts),
-                "unique_papers": len(
-                    {c["paper_id"] for c in contexts}
-                ),
+                "num_items": len(items),
+                "unique_papers": len({i["paper_id"] for i in items}),
             },
             "token_usage": {
                 "estimated_tokens": token_count,
                 "max_tokens": self.max_tokens,
             },
         }
+

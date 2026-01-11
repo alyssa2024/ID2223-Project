@@ -1,6 +1,6 @@
 # inference/agent_state.py
 from dataclasses import dataclass, field
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Set
 
 
 @dataclass
@@ -13,7 +13,9 @@ class AgentState:
 
     # --- Retrieval / Perception ---
     retrieval_results: List[Dict[str, Any]] = field(default_factory=list)
-    last_retrieval_type: Optional[str] = None
+    candidate_papers: Set[str] = field(default_factory=set)
+
+    # last_retrieval_type: Optional[str] = None
 
     # --- Context ---
     context_bundle: Optional[Dict[str, Any]] = None

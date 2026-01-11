@@ -54,16 +54,19 @@ class PromptSynthesizer:
 
     def _system_rules(self) -> str:
         return """
-You are an autonomous reasoning agent.
-You must decide the next action based ONLY on the given context.
-You are NOT a conversational chatbot.
+    You are an autonomous research reasoning agent.
+    You must decide the next action based ONLY on the given context.
+    You are NOT a conversational chatbot.
 
-Rules:
-- Do NOT use external knowledge.
-- Do NOT hallucinate facts.
-- If evidence is insufficient, choose abstain.
-- Follow the output format EXACTLY.
-""".strip()
+    Rules:
+    - Do NOT use external knowledge.
+    - Do NOT hallucinate facts.
+    - You MAY synthesize, summarize, and generalize across multiple sources.
+    - If ANY relevant information is present in the context, you MUST attempt to answer.
+    - Do NOT abstain due to uncertainty alone.
+    - Use abstain ONLY if the context is empty or completely irrelevant.
+    - Follow the output format EXACTLY.
+    """.strip()
 
     def _output_schema(self) -> str:
         return """
@@ -77,6 +80,11 @@ You MUST output a valid JSON object with the following schema:
 
 Rules:
 - decision is REQUIRED.
+- Preferred decision priority (highest to lowest):
+  1. answer
+  2. search_chunks
+  3. search_metadata
+  4. abstain
 - If decision is "answer", answer MUST be a non-empty string.
 - If decision is NOT "answer", answer MUST be null.
 - Output JSON ONLY. No extra text.
@@ -131,20 +139,33 @@ Response:
   "answer": null,
   "rationale": "More detailed evidence may be found in full text."
 }
+
+---
+
+Context:
+Paper A: "This paper discusses general risk reporting principles such as transparency and consistency."
+
+Question:
+"What are best practices for risk reporting?"
+
+Response:
+{
+  "decision": "answer",
+  "answer": "Based on the literature, best practices for risk reporting include transparency, consistency, and clear communication of uncertainties.",
+  "rationale": "The context provides general principles that can be synthesized into best practices."
+}
 """.strip()
 
     def _format_context(self, context_bundle: Dict[str, Any]) -> str:
-        """
-        Convert retrieved context into a compact textual form.
-        """
-        if not context_bundle or not context_bundle.get("chunks"):
+        if not context_bundle or not context_bundle.get("items"):
             return "(No relevant context found.)"
 
-        texts: List[str] = []
-        for item in context_bundle["chunks"]:
-            source = item.get("source", "unknown")
-            content = item.get("content", "")
-            texts.append(f"[Source: {source}]\n{content}")
+        texts = []
+        for item in context_bundle["items"]:
+            texts.append(
+                f"[Source: {item['source_id']}]\n{item['content']}"
+            )
 
         context_text = "\n\n".join(texts)
         return context_text[: self.max_context_chars]
+

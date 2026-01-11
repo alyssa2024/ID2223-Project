@@ -1,113 +1,59 @@
 # functions/llm_wrapper.py
 
 import os
-import getpass
-import torch
-import transformers
-from transformers import AutoTokenizer, AutoModelForCausalLM
+from typing import Optional
+from openai import OpenAI
 
 
 class LLMWrapper:
     """
-    Agent-ready LLM wrapper (BASE MODEL version).
+    Agent-ready LLM wrapper (OpenAI-compatible API).
 
-    - Uses a pure base causal language model
-    - No PEFT / LoRA / adapters
-    - Fully controlled by agentic loop + prompt
+    Works with:
+    - SiliconFlow
+    - OpenAI
+    - Any OpenAI-compatible service
+
+    Contract:
+    - Input: prompt (str)
+    - Output: raw generated text (str)
     """
 
     def __init__(
         self,
-        model_name_or_path: str,
+        model: str = "Qwen/Qwen3-8B",
+        base_url: Optional[str] = None,
+        api_key : Optional[str] = None,
         temperature: float = 0.2,
-        repetition_penalty: float = 1.5,
-        max_new_tokens: int = 750,
+        max_tokens: int = 1024,
     ):
-        self.model_name_or_path = model_name_or_path
+        self.model = model
         self.temperature = temperature
-        self.repetition_penalty = repetition_penalty
-        self.max_new_tokens = max_new_tokens
+        self.max_tokens = max_tokens
 
-        self.tokenizer, self.model = self._load_model()
-        self.pipeline = self._build_pipeline()
+        self.api_key = api_key 
+        if not self.api_key:
+            raise ValueError("API key is required.")
 
-    # ------------------------------------------------------------------
-    # Model loading (BASE MODEL)
-    # ------------------------------------------------------------------
-
-    def _load_model(self):
-        """
-        Load base causal LM and tokenizer from HuggingFace.
-        """
-        os.environ["HF_API_KEY"] = (
-            os.getenv("HF_API_KEY")
-            or getpass.getpass("🔑 Enter your HuggingFace API key: ")
+        self.client = OpenAI(
+            api_key=self.api_key,
+            base_url=base_url,
         )
-
-        tokenizer = AutoTokenizer.from_pretrained(
-            self.model_name_or_path,
-            token=os.environ["HF_API_KEY"],
-        )
-
-        model = AutoModelForCausalLM.from_pretrained(
-            self.model_name_or_path,
-            device_map="auto",
-            torch_dtype=torch.float16,
-            token=os.environ["HF_API_KEY"],
-        )
-
-        # Ensure padding works correctly
-        if tokenizer.pad_token is None:
-            tokenizer.pad_token = tokenizer.eos_token
-        tokenizer.padding_side = "right"
-
-        print(f"⛳️ Base LLM loaded on device: {model.device}")
-        return tokenizer, model
-
-    # ------------------------------------------------------------------
-    # Raw text-generation pipeline
-    # ------------------------------------------------------------------
-
-    def _build_pipeline(self):
-        """
-        Build a raw HuggingFace text-generation pipeline.
-        """
-        return transformers.pipeline(
-            model=self.model,
-            tokenizer=self.tokenizer,
-            task="text-generation",
-            temperature=self.temperature,
-            repetition_penalty=self.repetition_penalty,
-            max_new_tokens=self.max_new_tokens,
-            do_sample=True,
-            return_full_text=True,
-            pad_token_id=self.tokenizer.eos_token_id,
-        )
-
-    # ------------------------------------------------------------------
-    # Callable interface for Agent
-    # ------------------------------------------------------------------
 
     def __call__(self, prompt: str) -> str:
-        """
-        Execute one reasoning step.
-
-        Parameters
-        ----------
-        prompt : str
-            Fully synthesized prompt from PromptSynthesizer
-
-        Returns
-        -------
-        str
-            Raw generated text
-        """
         if not isinstance(prompt, str):
             raise ValueError("Prompt must be a string.")
 
-        outputs = self.pipeline(prompt)
+        response = self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=self.temperature,
+            max_tokens=self.max_tokens,
+        )
 
-        if not outputs or "generated_text" not in outputs[0]:
-            raise RuntimeError("Invalid LLM output format.")
-
-        return outputs[0]["generated_text"].strip()
+        try:
+            return response.choices[0].message.content.strip()
+        except Exception:
+            raise RuntimeError(f"Invalid LLM response: {response}")

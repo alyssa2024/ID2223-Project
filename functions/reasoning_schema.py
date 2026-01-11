@@ -1,17 +1,16 @@
-# inference/reasoning_schema.py
-from typing import TypedDict, Optional
+from typing import TypedDict, Optional, Literal
 
 
-class ReasoningOutput(TypedDict, total=False):
-    decision: str
-    """
-    Allowed values:
-    - "answer"
-    - "search_metadata"
-    - "search_chunks"
-    - "refine_query"
-    - "abstain"
-    """
+Decision = Literal[
+    "answer",
+    "search_metadata",
+    "search_chunks",
+    "abstain",
+]
 
+
+class ReasoningOutput(TypedDict):
+    decision: Decision
     answer: Optional[str]
-    rationale: Optional[str]
+    rationale: str
+

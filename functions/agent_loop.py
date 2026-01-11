@@ -43,6 +43,10 @@ class AgenticInference:
                 state.retrieval_results
             )
 
+            print("=== CONTEXT BUNDLE ===")
+            print(state.context_bundle)
+            print("======================")
+
             # --- Synthesize prompt ---
             prompt = self.prompt_synthesizer.synthesize(
                 question=state.original_query,
@@ -52,6 +56,10 @@ class AgenticInference:
 
             # --- LLM reasoning ---
             raw_output = self.llm(prompt)
+            print("=== RAW LLM OUTPUT ===")
+            print(raw_output)
+            print("======================")
+
             try:
                 reasoning: ReasoningOutput = json.loads(raw_output)
             except Exception:
@@ -62,25 +70,75 @@ class AgenticInference:
             state.last_llm_output = reasoning
 
             # --- Decision ---
-            decision = reasoning.get("decision")
+            # decision = reasoning["decision"]
+            decision = reasoning["decision"]
+            rationale = reasoning.get("reasoning", {}).get("decision_rationale")
 
+            print("=== AGENT REASONING ===")
+            print("Decision:", decision)
+            print("Rationale:", rationale)
+            print("======================")
+
+            # --- ANSWER ---
             if decision == "answer":
                 state.terminated = True
                 state.termination_reason = "Answer generated"
-                return reasoning.get("answer", "")
 
-            if decision in {"search_chunks", "search_metadata"}:
-                state.retrieval_results = self.mcp.dispatch(
-                    action=decision,
+                citations = []
+                if state.context_bundle and "items" in state.context_bundle:
+                    citations = state.context_bundle["items"]
+
+                return {
+                    "answer": reasoning.get("answer", ""),
+                    "citations": citations,
+                }
+
+            # --- METADATA SEARCH ---
+            elif decision == "search_metadata":
+                results = self.mcp.dispatch(
+                    action="search_metadata",
                     query=state.canonical_query,
-                    k=10,
+                    k=5,
                 )
-                state.last_retrieval_type = decision
+
+                state.retrieval_results = results
+                
+                print("=== RETRIEVAL RESULTS ===")
+                print(state.retrieval_results[:2])
+                print("=========================")
+
+                state.candidate_papers = {
+                    r["paper_id"] for r in results if "paper_id" in r
+                }
+
                 continue
 
-            if decision == "abstain":
-                state.terminated = True
-                state.termination_reason = "Abstained"
-                return "I cannot answer this question with the available information."
+            # --- CHUNK SEARCH ---
+            elif decision == "search_chunks":
+                paper_ids = (
+                    list(state.candidate_papers)
+                    if state.candidate_papers
+                    else None
+                )
+
+                state.retrieval_results = self.mcp.dispatch(
+                    action="search_chunks",
+                    query=state.canonical_query,
+                    k=10,
+                    paper_ids=paper_ids,
+                )
+
+                continue
+
+            # --- ABSTAIN ---
+            # elif decision == "abstain":
+            #     state.terminated = True
+            #     state.termination_reason = "Abstained"
+            #     return "I cannot answer this question with the available information."
+            elif decision == "abstain":
+                rationale = reasoning.get("reasoning", {}).get("decision_rationale")
+                if not rationale:
+                    raise RuntimeError("ABSTAIN without decision_rationale — schema mismatch")
+
 
         return "Inference terminated without a confident answer."
