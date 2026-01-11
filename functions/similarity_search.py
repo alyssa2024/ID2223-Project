@@ -38,6 +38,17 @@ class SimilaritySearchEngine:
         self.embedding_model = embedding_model
         self.metadata_fv = metadata_feature_view
         self.chunk_fv = chunk_feature_view
+        self.paper_id_to_title = {}
+        try:
+            rows = self.metadata_fv.read()
+            for _, row in rows.iterrows():
+                pid = row.get("paper_id")
+                title = row.get("title")
+                if pid and title:
+                    self.paper_id_to_title[pid] = title
+        except Exception:
+            # fail silently: title is optional
+            self.paper_id_to_title = {}
 
     def _row_to_dict(self, row, feature_names):
         """
@@ -182,14 +193,17 @@ class SimilaritySearchEngine:
             if not content or not str(content).strip():
                 continue
 
-            results.append(
-                {
-                    "paper_id": row.get("paper_id"),
-                    "chunk_index": row.get("chunk_index"),
-                    "content": content,
-                    "score": row.get("distance", 1.0 / (rank + 1)),
-                }
-            )
+        paper_id = row.get("paper_id")
+
+        results.append(
+            {
+                "paper_id": paper_id,
+                "title": self.paper_id_to_title.get(paper_id), 
+                "chunk_index": row.get("chunk_index"),
+                "content": content,
+                "score": row.get("distance", 1.0 / (rank + 1)),
+            }
+        )
 
         return results
 

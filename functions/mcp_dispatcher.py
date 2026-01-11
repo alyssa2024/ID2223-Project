@@ -16,5 +16,6 @@ class MCPDispatcher:
 
         if action == "search_chunks":
             return self.search_engine.search_chunks(query, **kwargs)
+            
 
         raise ValueError(f"Unknown MCP action: {action}")

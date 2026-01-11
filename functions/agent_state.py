@@ -14,6 +14,7 @@ class AgentState:
     # --- Retrieval / Perception ---
     retrieval_results: List[Dict[str, Any]] = field(default_factory=list)
     candidate_papers: Set[str] = field(default_factory=set)
+    paper_metadata: Dict[str, Dict[str, Any]] = field(default_factory=dict)
 
     last_retrieval_type: Optional[str] = None
 

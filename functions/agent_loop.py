@@ -37,14 +37,22 @@ class AgenticInference:
                 )
                 state.retrieval_results = results
                 state.last_retrieval_type = "metadata"
-# agent_loop.py
 
             if state.last_retrieval_type == "metadata":
-                state.candidate_papers = {
-                    r["paper_id"] for r in state.retrieval_results if "paper_id" in r
+            #     state.candidate_papers = {
+            #         r["paper_id"] for r in state.retrieval_results if "paper_id" in r
+            #     }
+                state.paper_metadata = {
+                    r["paper_id"]: {
+                        "title": r.get("title"),
+                        "abstract": r.get("abstract"),
+                    }
+                    for r in state.retrieval_results
+                    if r.get("paper_id")
                 }
 
-                # 🔴 强制进入 chunk search
+                state.candidate_papers = set(state.paper_metadata.keys())
+
                 state.retrieval_results = self.mcp.dispatch(
                     action="search_chunks",
                     query=state.canonical_query,
@@ -55,7 +63,18 @@ class AgenticInference:
                 continue
 
             # --- Build context ---
+            # if state.last_retrieval_type == "chunks":
+            #     state.context_bundle = self.context_builder.build(
+            #         state.retrieval_results
+            #     )
+            print("PAPER METADATA:", state.paper_metadata)
+
             if state.last_retrieval_type == "chunks":
+                for chunk in state.retrieval_results:
+                    pid = chunk.get("paper_id")
+                    if pid in state.paper_metadata:
+                        chunk["title"] = state.paper_metadata[pid].get("title")
+
                 state.context_bundle = self.context_builder.build(
                     state.retrieval_results
                 )

@@ -54,7 +54,7 @@ class ContextBuilder:
                 continue
 
             content = self._normalize_text(chunk.get("content", ""))
-            
+
             if not content:
                 continue
 
@@ -67,6 +67,7 @@ class ContextBuilder:
                 {
                     "source_id": f"{chunk['paper_id']}#chunk-{chunk.get('chunk_index')}",
                     "paper_id": chunk["paper_id"],
+                    "title": chunk.get("title"), 
                     "content": content,
                     "score": chunk.get("score"),
                 }

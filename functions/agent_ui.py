@@ -11,6 +11,7 @@ def launch_agent_ui(agent):
         """
         history: List[{"role": "user"|"assistant", "content": str}]
         """
+        citation_block = ""
 
         if history is None:
             history = []
@@ -37,13 +38,24 @@ def launch_agent_ui(agent):
             rationale = ""
 
         # ---- build citation block ----
-        citation_block = ""
         if citations:
             citation_block += "\n\n---\n**Sources**\n"
+            seen = set()
+
             for i, c in enumerate(citations, start=1):
-                source_id = c.get("paper_id", f"source-{i}")
-                snippet = c.get("content", "")[:500]
-                citation_block += f"\n[{i}] `{source_id}`\n{snippet}\n"
+                paper_id = c.get("paper_id")
+                title = c.get("title") or paper_id or f"Source {i}"
+
+                if paper_id in seen:
+                    continue
+                seen.add(paper_id)
+
+                snippet = c.get("content", "")[:400].strip()
+
+                citation_block += f"\n[{i}] **{title}**\n"
+                if snippet:
+                    citation_block += f"{snippet}\n"
+
 
         # ---- build final answer safely ----
         if answer is None:
