@@ -11,9 +11,8 @@ Qwen-8B operates as a decision-making agent, not a plain chatbot.
 
 For every user question, it reasons between three actions:
 
-Action	Purpose
-Direct Answer	The question is conceptual or does not require stored papers
-RAG Retrieval	The question depends on paper content
-Tool Call (MCP)	The question requires interacting with stored data
+Direct Answer:The question is conceptual or does not require stored papers
+RAG Retrieval:The question depends on paper content
+Tool Call (MCP):The question requires interacting with stored data
 
 This makes the model data-aware, tool-aware, and context-aware.
