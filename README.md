@@ -18,9 +18,9 @@ The system integrates four layers:
 
 ## Part I — Agent
 
-Qwen-8B operates as a **decision-making agent**, not a plain chatbot.
+### Qwen-8B operates as a **decision-making agent**, not a plain chatbot.
 
-For every user question, it reasons between three possible actions:
+### For every user question, it reasons between three possible actions:
 
 ### 1. Direct Answer
 Used when the question is **conceptual** or does **not require stored papers**.
@@ -34,19 +34,12 @@ Used when the question **requires interacting with structured data**, such as:
 - detecting newly added papers
 - querying metadata
 
-This design makes the model:
-
-- **Data-aware**
-- **Tool-aware**
-- **Context-aware**
-
-rather than a blind text generator.
-
-##  Part II — Feature Group Design
-
-Two Feature Groups form the backbone of the system.
+### This design makes the model:**Data-aware** **Tool-aware** **Context-aware** rather than a blind text generator.
 
 ---
+##  Part II — Feature Group Design
+
+### Two Feature Groups form the backbone of the system.
 
 ### 1 Paper Metadata Feature Group
 
@@ -64,8 +57,6 @@ This Feature Group is used when the agent needs:
 - Filtering by author, year, or topic  
 - Citation-style information  
 
----
-
 ### 2 Paper Chunk Embedding Feature Group
 
 This Feature Group stores **semantic representations of paper content**.
@@ -81,7 +72,6 @@ It is used for:
 - RAG retrieval  
 - Context injection into Qwen-8B  
 
----
 
 ### 3 How the Agent Chooses
 
@@ -94,4 +84,18 @@ The agent decides which Feature Group to use based on the intent of the question
 | “Show recent papers” | Metadata Feature Group |
 | “Summarize what papers say about Z” | Both Feature Groups |
 
-This design makes the system **structurally grounded**, not just vector-based.
+### This design makes the system **structurally grounded**, not just vector-based.
+
+---
+
+## Part III — Updating the RAG Knowledge
+
+### The system is **incremental by design**.
+
+* Zotero acts as the **master record** of the library, while the Feature Store and the RAG index are **derived data**.  
+
+* Only newly added papers are processed.
+
+* The current Zotero export is compared against the existing paper metadata in the Feature Store to identify papers that have not yet been processed. Only these new papers are parsed, chunked, embedded, and inserted into both Feature Groups and the RAG index.
+
+* This ensures that the knowledge base grows **safely and efficiently** over time, avoiding duplicate entries, unnecessary recomputation, and loss of consistency between Zotero, the Feature Store, and the semantic memory.
