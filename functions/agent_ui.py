@@ -1,5 +1,5 @@
 import gradio as gr
-
+from collections import defaultdict
 
 def launch_agent_ui(agent):
     """
@@ -40,22 +40,30 @@ def launch_agent_ui(agent):
         # ---- build citation block ----
         if citations:
             citation_block += "\n\n---\n**Sources**\n"
-            seen = set()
 
-            for i, c in enumerate(citations, start=1):
-                paper_id = c.get("paper_id")
-                title = c.get("title") or paper_id or f"Source {i}"
-
-                if paper_id in seen:
+            # paper_id -> list of chunks
+            grouped = defaultdict(list)
+            for c in citations:
+                pid = c.get("paper_id")
+                if not pid:
                     continue
-                seen.add(paper_id)
+                grouped[pid].append(c)
 
-                snippet = c.get("content", "")[:400].strip()
+            # enumerate papers
+            for paper_idx, (pid, chunks) in enumerate(grouped.items(), start=1):
+                title = chunks[0].get("title") or pid
 
-                citation_block += f"\n[{i}] **{title}**\n"
-                if snippet:
-                    citation_block += f"{snippet}\n"
+                # Paper header with index
+                citation_block += f"\n[{paper_idx}] **{title}**\n"
 
+                # List chunks under this paper
+                for c in chunks:
+                    content = c.get("content", "").strip()
+                    if not content:
+                        continue
+
+                    snippet = content[:400]
+                    citation_block += f"- {snippet}\n"
 
         # ---- build final answer safely ----
         if answer is None:

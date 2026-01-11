@@ -193,17 +193,17 @@ class SimilaritySearchEngine:
             if not content or not str(content).strip():
                 continue
 
-        paper_id = row.get("paper_id")
+            paper_id = row.get("paper_id")
 
-        results.append(
-            {
-                "paper_id": paper_id,
-                "title": self.paper_id_to_title.get(paper_id), 
-                "chunk_index": row.get("chunk_index"),
-                "content": content,
-                "score": row.get("distance", 1.0 / (rank + 1)),
-            }
-        )
+            results.append(
+                {
+                    "paper_id": paper_id,
+                    "title": self.paper_id_to_title.get(paper_id), 
+                    "chunk_index": row.get("chunk_index"),
+                    "content": content,
+                    "score": row.get("distance", 1.0 / (rank + 1)),
+                }
+            )
 
         return results
 

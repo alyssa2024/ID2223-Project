@@ -126,51 +126,78 @@ def chunk_text(
 
     return chunks
 
+
 def split_sentences(text: str) -> List[str]:
-    return re.split(r'(?<=[.!?])\s+', text)
+    """
+    Simple sentence splitter for academic English text.
+    """
+    return re.split(r'(?<=[.!?])\s+', text.strip())
 
 
 def extract_paragraph_chunks(
     text: str,
     min_len: int = 500,
     max_len: int = 1500,
-    overlap: int = 200,
+    overlap_sentences: int = 2,   # 👈 sentence-level overlap
 ) -> List[str]:
     """
-    Paragraph-first chunking with sentence-aware fallback splitting.
+    Paragraph-first chunking with sentence-level overlap.
+    No character slicing. No broken words.
     """
     if not text:
         return []
 
     paragraphs = [p.strip() for p in text.split("\n\n") if p.strip()]
-    chunks = []
+    chunks: List[str] = []
 
     for para in paragraphs:
+        # skip very short paragraphs
         if len(para) < min_len:
             continue
 
+        # skip separators / garbage
         if re.search(r"(\.{5,}|\-{5,})", para):
             continue
 
+        # short enough: keep whole paragraph
         if len(para) <= max_len:
             chunks.append(para)
             continue
 
         sentences = split_sentences(para)
 
-        current = ""
-        for sent in sentences:
-            if len(current) + len(sent) <= max_len:
-                current = f"{current} {sent}".strip()
-            else:
-                if current:
-                    chunks.append(current)
-                current = sent[-overlap:] if overlap > 0 else sent
+        current_sents: List[str] = []
+        current_len = 0
 
-        if current:
-            chunks.append(current)
+        for sent in sentences:
+            sent = sent.strip()
+            if not sent:
+                continue
+
+            sent_len = len(sent) + 1  # +1 for space
+
+            # can still fit into current chunk
+            if current_len + sent_len <= max_len:
+                current_sents.append(sent)
+                current_len += sent_len
+            else:
+                # flush current chunk
+                if current_sents:
+                    chunks.append(" ".join(current_sents))
+
+                # sentence-level overlap
+                if overlap_sentences > 0:
+                    current_sents = current_sents[-overlap_sentences:]
+                else:
+                    current_sents = []
+
+                # start new chunk with overlap + current sentence
+                current_sents.append(sent)
+                current_len = sum(len(s) + 1 for s in current_sents)
+
+        if current_sents:
+            chunks.append(" ".join(current_sents))
 
     return chunks
-
 
 
