@@ -34,7 +34,7 @@ Used when the question **requires interacting with structured data**, such as:
 - detecting newly added papers
 - querying metadata
 
-### This design makes the model:**Data-aware** **Tool-aware** **Context-aware** rather than a blind text generator.
+### This design makes the model:**Data-aware** **Tool-aware** and **Context-aware** which make it more than a blind text generator.
 
 ---
 ##  Part II — Feature Group Design
