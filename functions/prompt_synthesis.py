@@ -4,6 +4,11 @@ from typing import Dict, Any, List
 class PromptSynthesizer:
     """
     Prompt synthesizer for agentic inference (base model friendly).
+
+    Design goals:
+    - Enforce paper-level numeric citations ([1], [2], ...)
+    - Prevent Source ID / Paper ID leakage into model output
+    - Stable behavior for base LLMs (non-chat, non-tool models)
     """
 
     def __init__(
@@ -44,9 +49,9 @@ class PromptSynthesizer:
 {current_goal}
 
 ### RESPONSE
-"""
+""".strip()
 
-        return prompt.strip()
+        return prompt
 
     # ------------------------------------------------------------
     # Prompt components
@@ -54,21 +59,29 @@ class PromptSynthesizer:
 
     def _system_rules(self) -> str:
         return """
-    You are an autonomous research reasoning agent.
-    You must decide the next action based ONLY on the given context.
-    You are NOT a conversational chatbot.
+You are an autonomous research reasoning agent.
+You must decide the next action based ONLY on the given context.
+You are NOT a conversational chatbot.
 
-    Rules:
-    - Do NOT use external knowledge.
-    - Do NOT hallucinate facts.
-    - You MAY synthesize, summarize, and generalize across multiple sources.
-    - If ANY relevant information is present in the context, you MUST attempt to answer.
-    - Do NOT abstain due to uncertainty alone.
-    - Use abstain ONLY if the context is empty or completely irrelevant.
-    - Follow the output format EXACTLY.
-    - Metadata (title/abstract) is NOT sufficient evidence.
-    - If only metadata-level information is present, you MUST request search_chunks before answering.
-    """.strip()
+General Rules:
+- Do NOT use external knowledge.
+- Do NOT hallucinate facts.
+- You MAY synthesize, summarize, and generalize across multiple sources.
+- If ANY relevant information is present in the context, you MUST attempt to answer.
+- Do NOT abstain due to uncertainty alone.
+- Use abstain ONLY if the context is empty or completely irrelevant.
+- Metadata (title/abstract) alone is NOT sufficient evidence.
+- If only metadata-level information is present, you MUST request search_chunks before answering.
+- Follow the output format EXACTLY.
+- Output JSON ONLY. No extra text.
+
+Citation Rules (CRITICAL):
+- Every factual statement derived from the context MUST include a citation.
+- Citations MUST use the numeric format exactly as provided in the context (e.g., [1], [2]).
+- Do NOT invent new citation numbers.
+- Do NOT use Source ID, Paper ID, author names, or year-based citations.
+- Do NOT cite information not present in the context.
+""".strip()
 
     def _output_schema(self) -> str:
         return """
@@ -89,72 +102,91 @@ Rules:
   4. abstain
 - If decision is "answer", answer MUST be a non-empty string.
 - If decision is NOT "answer", answer MUST be null.
+- If decision is "answer", the answer MUST use numeric citations like [1], [2] for all factual claims.
 - Output JSON ONLY. No extra text.
 """.strip()
 
     def _icl_examples(self) -> str:
         """
         In-context learning examples to stabilize base model behavior.
+        Domain: PCG (phonocardiogram) signal synthesis and analysis.
         """
         return """
 ### EXAMPLES
 
 Context:
-Paper A: "This paper introduces method X for risk analysis."
+[EVIDENCE]
+Reference: [1]
+Title: Neural Modeling of Phonocardiogram Signals
+Content:
+This paper proposes a neural network-based method to synthesize realistic PCG signals by modeling heart sound components such as S1 and S2 using a waveform-level generator.
 
 Question:
-"What is method X used for?"
+"What is the purpose of the proposed PCG synthesis method?"
 
 Response:
 {
   "decision": "answer",
-  "answer": "Method X is used for risk analysis.",
-  "rationale": "The context explicitly describes the purpose of method X."
+  "answer": "The proposed method is designed to synthesize realistic phonocardiogram signals by modeling key heart sound components such as S1 and S2 using a neural waveform generator [1].",
+  "rationale": "The context explicitly describes the goal and methodology of the PCG synthesis approach."
 }
 
 ---
 
 Context:
-(No relevant information found.)
+(No relevant context found.)
 
 Question:
-"How does method Y improve performance?"
+"How does diffusion modeling improve PCG signal generation?"
 
 Response:
 {
   "decision": "abstain",
   "answer": null,
-  "rationale": "The context does not mention method Y."
+  "rationale": "The context does not contain any information related to diffusion-based PCG signal generation."
 }
 
 ---
 
 Context:
-Paper A: "This paper discusses general security principles."
+Paper A (metadata only):
+Title: A Review of Heart Sound Analysis Techniques
+Abstract:
+This paper surveys general methods for heart sound analysis.
 
 Question:
-"Give implementation details of protocol Z."
+"What neural architectures are used for PCG waveform synthesis?"
 
 Response:
 {
   "decision": "search_chunks",
   "answer": null,
-  "rationale": "More detailed evidence may be found in full text."
+  "rationale": "The available context only contains high-level metadata and lacks chunk-level evidence on specific synthesis architectures."
 }
 
 ---
 
 Context:
-Paper A: "This paper discusses general risk reporting principles such as transparency and consistency."
+[EVIDENCE]
+Reference: [1]
+Title: Data-Driven PCG Signal Modeling
+Content:
+The study highlights that high-quality PCG datasets with accurate segmentation of cardiac cycles are essential for training reliable synthesis models.
+
+[EVIDENCE]
+Reference: [2]
+Title: Neural Synthesis of Biomedical Signals
+Content:
+The paper emphasizes that incorporating temporal structure improves the perceptual quality of synthesized biomedical waveforms.
 
 Question:
-"What are best practices for risk reporting?"
+"What factors are important for training effective PCG signal synthesis models?"
 
 Response:
 {
   "decision": "answer",
-  "answer": "Based on the literature, best practices for risk reporting include transparency, consistency, and clear communication of uncertainties.",
-  "rationale": "The context provides general principles that can be synthesized into best practices."
+  "answer": "Effective PCG signal synthesis models rely on high-quality datasets with accurate cardiac cycle segmentation [1], as well as modeling strategies that incorporate temporal structure to improve perceptual quality [2].",
+  "rationale": "Both sources provide complementary evidence about data requirements and modeling considerations for PCG synthesis."
 }
 """.strip()
 
@@ -162,12 +194,30 @@ Response:
         if not context_bundle or not context_bundle.get("items"):
             return "(No relevant context found.)"
 
-        texts = []
+        texts: List[str] = []
+
+        # Map paper_id to a stable numeric citation order
+        paper_id_to_order: Dict[str, int] = {}
+        current_order = 1
+
         for item in context_bundle["items"]:
+            pid = item.get("paper_id")
+            if pid not in paper_id_to_order:
+                paper_id_to_order[pid] = current_order
+                current_order += 1
+
+            order = paper_id_to_order[pid]
+            title = item.get("title", "Unknown Title")
+            content = item.get("content", "")
+
             texts.append(
-                f"[Source: {item['source_id']}]\n{item['content']}"
+                f"""[EVIDENCE]
+Reference: [{order}]
+Title: {title}
+Content:
+{content}
+""".strip()
             )
 
         context_text = "\n\n".join(texts)
         return context_text[: self.max_context_chars]
-

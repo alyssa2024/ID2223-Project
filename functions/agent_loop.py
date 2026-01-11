@@ -1,7 +1,8 @@
 import json
 from functions.agent_state import AgentState
 from functions.reasoning_schema import ReasoningOutput
-
+from functions.intent_router import IntentRouter
+from collections import OrderedDict
 
 class AgenticInference:
     def __init__(
@@ -17,8 +18,29 @@ class AgenticInference:
         self.context_builder = context_builder
         self.prompt_synthesizer = prompt_synthesizer
         self.mcp = mcp_dispatcher
+        self.router = IntentRouter(llm)
 
     def run(self, query: str) -> str:
+
+        intent = self.router.route(query)
+        print(f"=== DETECTED INTENT: {intent} ===")
+
+        if intent in ["GREETING", "SELF_INFO", "GENERAL_KNOWLEDGE"]:
+            direct_prompt = f"""
+            You are a helpful Research Assistant specialized in Physiological Signal Analysis (ECG/PCG).
+            
+            User Intent: {intent}
+            User Query: {query}
+            
+            Please respond politely and concisely. Do NOT hallucinate retrieved papers.
+            """
+            response_text = self.llm(direct_prompt)
+            
+            return {
+                "answer": response_text,
+                "citations": []
+            }
+        
         state = AgentState(
             original_query=query,
             canonical_query=query.lower().strip(),
@@ -121,19 +143,34 @@ class AgenticInference:
             if decision == "answer" and state.last_retrieval_type != "chunks":
                 raise RuntimeError("Answer generated without chunk-level evidence")
 
-            # --- ANSWER ---
             if decision == "answer":
                 state.terminated = True
-                state.termination_reason = "Answer generated"
+
+                paper_map = OrderedDict()
+
+                for item in state.context_bundle.get("items", []):
+                    pid = item["paper_id"]
+                    if pid not in paper_map:
+                        paper_map[pid] = {
+                            "paper_id": pid,
+                            "title": item.get("title"),
+                            "chunks": []
+                        }
+                    paper_map[pid]["chunks"].append({
+                        "content": item.get("content"),
+                        "source_id": item.get("source_id")
+                    })
 
                 citations = []
-                if state.context_bundle and "items" in state.context_bundle:
-                    citations = state.context_bundle["items"]
+                for idx, paper in enumerate(paper_map.values(), start=1):
+                    paper["order"] = idx
+                    citations.append(paper)
 
                 return {
                     "answer": reasoning.get("answer", ""),
-                    "citations": citations,
+                    "citations": citations
                 }
+
 
             # --- METADATA SEARCH ---
             elif decision == "search_metadata":

@@ -2,12 +2,11 @@ from typing import Dict, List
 
 class DebugPromptSynthesizer:
     """
-    Debug-oriented PromptSynthesizer (Relaxed Version).
+    Debug-oriented PromptSynthesizer (Strict Evidence Mode).
     
     Adjustments:
-    - Retains the structured reasoning steps (Steps 0-3).
-    - Removes the "Trap of Perfectionism" (allows partial answers).
-    - Works with your existing ContextBuilder (no metadata required).
+    - Maps internal Paper IDs to user-friendly citation numbers (e.g.,).
+    - Enforces strict citation formatting in LLM output.
     """
 
     def synthesize(
@@ -19,18 +18,26 @@ class DebugPromptSynthesizer:
         
         items: List[Dict] = context_bundle.get("items", [])
 
-        # ---- Format retrieved evidence ----
-        # (保持原样，适应现有的 ContextBuilder)
+        unique_paper_ids = []
+        paper_id_to_index = {}
+        
+        for item in items:
+            pid = item.get("paper_id")
+            if pid not in paper_id_to_index:
+                unique_paper_ids.append(pid)
+                paper_id_to_index[pid] = len(unique_paper_ids)
+
         evidence_blocks = []
         for i, item in enumerate(items):
+            pid = item.get("paper_id")
+            cite_index = paper_id_to_index.get(pid)
+            
             evidence_blocks.append(
                 f"""
 [EVIDENCE {i}]
-source_id: {item.get("source_id")}
-paper_id: {item.get("paper_id")}
-score: {item.get("score")}
-
-content:
+Reference: [{cite_index}]
+Title: {item.get("title", "Unknown Title")}
+Content:
 {item.get("content")}
 """.strip()
             )
@@ -41,9 +48,20 @@ content:
             else "NO EVIDENCE RETRIEVED"
         )
 
-        # ---- Debug reasoning prompt (RELAXED & PRO-ACTIVE) ----
+        legend_blocks = []
+        for pid in unique_paper_ids:
+            idx = paper_id_to_index[pid]
+            title = "Unknown Title"
+            for it in items:
+                if it["paper_id"] == pid:
+                    title = it.get("title", "Unknown Title")
+                    break
+            legend_blocks.append(f" -> {title} (ID: {pid})")
+            
+        sources_legend = "\n".join(legend_blocks)
+
         prompt = f"""
-You are a research agent operating in **DEBUG MODE**.
+You are a research agent operating in **STRICT EVIDENCE MODE**.
 
 Your goal:
 {current_goal}
@@ -57,31 +75,36 @@ RETRIEVED EVIDENCE
 {evidence_text}
 
 ========================
+SOURCE LEGEND (Context only)
+========================
+{sources_legend}
+
+========================
 REASONING INSTRUCTIONS
 ========================
 
 You MUST follow the steps below IN ORDER.
 
-Step 0: Intent & Scope Analysis
-- Identify the CORE intent of the question.
-- Acknowledge that retrieved evidence is often fragmented (chunks).
-- **Goal:** Your job is to *synthesize* a helpful answer from these fragments, NOT to reject them because they aren't perfect.
+Step 0: Intent Verification
+- Does the evidence address the core question?
+- If user asks for "Challenges", but evidence only shows "Results", NOTE this discrepancy.
 
-Step 1: Evidence Applicability Check
-- Do NOT list "Required Information" (this leads to over-conservatism).
-- Instead, list **"Available Connections"**:
-  - Does the evidence mention the Core Concept?
-  - If the User asks for specific domain (e.g., ECG) but evidence is general (e.g., GANs), mark this as a **Valid Theoretical Connection**.
-  - **Rule:** General principles applied to specific domains are valid answers if labeled as "inference".
+Step 1: Evidence Synthesis
+- Extract facts *solely* from the provided [EVIDENCE] blocks.
+- **CITATION RULE (CRITICAL):** - Every time you state a fact from an evidence block, you MUST copy the `Reference` tag from that block exactly (e.g., ``).
+  - Put the citation at the END of the sentence.
+  - Example: "WaveNet is used for PCG synthesis."
+  - Use ONLY the provided numeric citation format like [1], [2].
+  - Do NOT invent new citation numbers.
+  - Do NOT use Source ID, Paper ID, or author-year formats.
 
-Step 2: Gap Handling (The "Best Effort" Rule)
-- If specific details (e.g., a specific number or date) are missing, do NOT abstain.
-- Instead, plan to state: "The text describes [General Concept], which suggests..." or "While specific ECG data is not shown, the method works by..."
 
-Step 3: Decision
-- **DEFAULT to "answer".**
-- Choose "abstain" ONLY if the evidence is **completely irrelevant** (e.g., Question about Biology, Evidence about History).
-- Uncertainty is NOT grounds for abstaining. State the uncertainty in the answer.
+Step 2: Decision
+- Decision: "answer"
+    - If you have relevant information.
+    - If the user input is Chitchat/Greeting (e.g., "hi"), answer politely without citations.
+- Decision: "abstain"
+    - ONLY if the evidence is completely unrelated.
 
 ========================
 OUTPUT FORMAT (STRICT)
@@ -90,14 +113,14 @@ OUTPUT FORMAT (STRICT)
 Return VALID JSON ONLY.
 
 {{
-  "decision": "answer" (or "abstain" only if impossible),
+  "decision": "answer",
   "reasoning": {{
-    "core_intent": "...",
-    "available_connections": [ "Evidence X supports concept Y..." ],
-    "inferences_made": [ "Applying general GAN theory to ECG domain..." ],
-    "rationale": "Why I decided to answer despite gaps."
+    "core_intent_check": "Yes/Partial/No",
+    "key_findings": [ "Finding 1" ],
+    "discrepancies": "Any missing info.",
+    "rationale": "Why I am answering."
   }},
-  "answer": "<The comprehensive answer. Use Markdown. If relying on inference, state 'Based on the general principles in the text...'>"
+  "answer": "<The comprehensive answer in Markdown. **Every sentence must have a citation** if based on evidence.>"
 }}
 
 DO NOT include any text outside the JSON.

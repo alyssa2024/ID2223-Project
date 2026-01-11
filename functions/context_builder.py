@@ -40,9 +40,9 @@ class ContextBuilder:
     ) -> Dict[str, Any]:
 
         sorted_chunks = sorted(
-            retrieved_chunks,
-            key=lambda x: x.get("score", float("inf")),
-        )
+                    retrieved_chunks,
+                    key=lambda x: x.get("score") if x.get("score") is not None else float("inf"),
+                )
 
         items = []
         seen = set()
