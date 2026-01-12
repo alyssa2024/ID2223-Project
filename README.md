@@ -14,7 +14,7 @@ The system allows users to interact with their research papers as a searchable a
 
 ## 🏗️ System Architecture
 
-<img src="agent_architecture.png" width="800"/>
+<img src="agent_articheture.png" width="800"/>
 
 ## 🔄 Pipelines Description
 
