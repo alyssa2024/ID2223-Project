@@ -12,6 +12,10 @@ The agent operates on a personal literature collection exported from **Zotero** 
 
 The system allows users to interact with their research papers as a searchable and queryable knowledge base, supporting efficient literature exploration, comprehension, and cross-paper reasoning.
 
+## 🏗️ System Architecture
+
+<img src="agent_architecture.png" width="800"/>
+
 ## 🔄 Pipelines Description
 
 The project is organized around three logical pipelines, each implemented and validated through a corresponding Jupyter notebook.  
