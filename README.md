@@ -10,64 +10,40 @@ The system allows users to interact with their research papers as a searchable a
 
 ## 🔄 Pipelines Description
 
-The project is organized around three logical pipelines, each implemented and validated through a corresponding Jupyter notebook.  
-The notebooks and pipelines are treated as **parallel representations of the same system components**, where notebooks are used for development and validation, while pipelines define the end-to-end processing logic.
+The project is structured around three core pipelines, designed to handle data ingestion, incremental updates, and agentic inference. These pipelines are implemented as modular components, ensuring separation of concerns between data engineering (MLOps) and application logic.
 
-### 🏗️ Feature Backfill Pipeline
+### 🏗️ 1. Feature Backfill Pipeline (Bootstrap)
 
-The Feature Backfill pipeline is responsible for the **initial construction of the paper knowledge base**.
+The Feature Backfill pipeline is responsible for the **initial construction of the knowledge base**.
+It performs the following steps:
+- **Data Ingestion**: Loads paper metadata and extracts full text from PDFs based on the Zotero export.
+- **Feature Engineering**: Processes data in two parallel streams—**metadata** (Titles/Abstracts) is embedded directly, while **full text** is first split into chunks before embedding.
+- **Storage**: Uploads both raw data and vector embeddings to **Hopsworks Feature Store**, organizing them into distinct Feature Groups for metadata and chunks.
 
-This pipeline:
-- loads a Zotero-exported CSV file containing paper metadata and local PDF file paths  
-- parses bibliographic metadata and extracts text from PDF documents  
-- processes metadata and document content separately  
-- generates vector embeddings for paper text  
-- stores metadata features and embeddings in Hopsworks Feature Store  
-
-This pipeline is executed once to bootstrap the system with the full historical literature collection.
+This pipeline is executed once to bootstrap the system with the complete literature collection.
 
 ---
 
-### 🔄 Feature Pipeline (Incremental Update)
+### 🔄 2. Feature Pipeline (Incremental Update)
 
-The Feature Pipeline implements **incremental knowledge base updates**.
-
-Its main purpose is to:
-- detect newly added papers in an updated Zotero CSV export  
-- avoid reprocessing existing documents  
-- generate embeddings only for unseen papers or text chunks  
-- append new metadata and vectors to the existing feature groups  
+The Feature Pipeline enables **continuous learning** by handling incremental updates.
+It focuses on:
+- **Change Detection**: Identifies new or modified entries in the Zotero CSV compared to the existing Feature Store.
+- **Update Logic**: Applies the **same feature engineering process** (chunking and embedding) as the backfill pipeline to the new data.
+- **Synchronization**: Upserts the processed features into the existing Hopsworks Feature Groups.
 
 This design enables efficient and scalable updates as the literature collection grows over time.
 
 ---
 
-### 🤖 Inference Pipeline
+### 🤖 3. Inference Pipeline (Agent & UI)
 
-The Inference Pipeline implements the **paper reading agent** and provides the interface through which users interact with the system.
+The Inference Pipeline operationalizes the **Paper Reading Agent** and provides the interactive layer for the user.
 
-It consists of two tightly coupled components:
+- **Agent Instantiation**: Constructs the runtime agent by initializing the Hopsworks vector retrieval layer and assembling the reasoning modules (Intent Router, Context Builder) to support RAG and In-Context Learning.
+- **User Interface (UI)**: Deploys a **chatbot-style interface** where the model generates answers with strict **paper-level citations**. Users can interact with these citations via **collapsible icons**, which expand to reveal the specific full-text chunks used as evidence.
 
-#### Agent Instantiation
-
-This component is responsible for constructing the paper reading agent, including:
-- initializing the vector retrieval layer connected to Hopsworks Feature Store  
-- embedding user queries into the same vector space as the paper corpus  
-- retrieving relevant papers or text chunks via semantic similarity search  
-- assembling retrieved context into prompts  
-- applying Retrieval-Augmented Generation and in-context learning using a large language model  
-
-The instantiated agent encapsulates the complete reasoning and retrieval logic required for grounded question answering over the literature collection.
-
-#### User Interface and Interaction
-
-This component handles deployment and user interaction with the agent:
-- provides a frontend interface for submitting natural language queries  
-- forwards user inputs to the instantiated agent  
-- displays generated answers returned by the LLM  
-- supports interactive exploration of the paper knowledge base  
-
-Together, these components enable end-to-end interaction, from user query submission to retrieval-aware answer generation, forming the final access point of the system.
+Together, these components transform the static data in Hopsworks into a dynamic, queryable research assistant.
 
 ## 🧠 Agent Execution Model
 
