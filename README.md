@@ -1,14 +1,6 @@
 ## 📚 Introduction
 
-This project implements a **paper reading agent** that enables **semantic search and question answering over academic papers** using **Retrieval-Augmented Generation (RAG)** and **in-context learning**.
-
-The agent operates on a personal literature collection exported from **Zotero** and provides the following capabilities:
-
-- ingests academic papers and their metadata from a Zotero-exported CSV file  
-- creates and stores **vector embeddings** for paper content to support semantic retrieval  
-- maintains a **continuously updatable knowledge base**, automatically incorporating newly added papers  
-- retrieves relevant papers or text chunks in response to user queries  
-- leverages a large language model to generate **grounded, context-aware answers** based on retrieved documents  
+This project implements a **Retrieval-Augmented Generation (RAG) agent** designed as an autonomous **agentic loop**, leveraging **Hopsworks Feature Store** to manage vector embeddings derived from **Zotero** libraries.Upon perceiving a research intent, the system executes a **two-stage retrieval strategy**: it scopes the search using metadata to identify candidates, drills down into full-text chunks, and applies **reranking** to construct a high-quality dynamic context.This retrieved evidence forms the basis of **In-Context Learning (ICL)**—supplemented by few-shot demonstrations to guide reasoning—enabling the LLM to generate grounded responses with **strict, evidence-backed citations**.
 
 The system allows users to interact with their research papers as a searchable and queryable knowledge base, supporting efficient literature exploration, comprehension, and cross-paper reasoning.
 
