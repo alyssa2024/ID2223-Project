@@ -1,3 +1,6 @@
+# ID2223-Project  
+## Qwen-8B Research Agent with Zotero-Driven RAG
+
 ## 📚 Introduction
 
 This project implements an intelligent **Paper Reading Agent** that goes beyond simple chatbots by using an **autonomous agentic loop**. It uses **Hopsworks Feature Store** to manage vector embeddings created from **Zotero** libraries. Unlike static `Query → Retrieve → Answer` pipelines, this agent actively **checks if the evidence is sufficient**. It uses a **two-stage retrieval strategy** (first checking metadata, then searching full text with **reranking**) to decide whether to search more or answer the question based on the quality of the context. This retrieved evidence forms the basis of **In-Context Learning (ICL)**—aided by few-shot examples—allowing the LLM to generate accurate answers with **strict, evidence-backed citations**.
