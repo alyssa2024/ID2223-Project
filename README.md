@@ -12,7 +12,7 @@ The system allows users to interact with their research papers as a searchable a
 
 The project is structured around three core pipelines, designed to handle data ingestion, incremental updates, and agentic inference. These pipelines are implemented as modular components, ensuring separation of concerns between data engineering (MLOps) and application logic.
 
-### 🏗️ 1. Feature Backfill Pipeline (Bootstrap)
+###  1. Feature Backfill Pipeline (Bootstrap)
 
 The Feature Backfill pipeline is responsible for the **initial construction of the knowledge base**.
 It performs the following steps:
@@ -24,7 +24,7 @@ This pipeline is executed once to bootstrap the system with the complete literat
 
 ---
 
-### 🔄 2. Feature Pipeline (Incremental Update)
+###  2. Feature Pipeline (Incremental Update)
 
 The Feature Pipeline enables **continuous learning** by handling incremental updates.
 It focuses on:
@@ -36,7 +36,7 @@ This design enables efficient and scalable updates as the literature collection 
 
 ---
 
-### 🤖 3. Inference Pipeline (Agent & UI)
+###  3. Inference Pipeline (Agent & UI)
 
 The Inference Pipeline operationalizes the **Paper Reading Agent** and provides the interactive layer for the user.
 
