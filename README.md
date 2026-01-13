@@ -81,7 +81,7 @@ In the final phase, the agent generates the answer using the optimized context:
 - **In-Context Learning (ICL)**: The prompt is improved with **few-shot examples** to guide the LLM’s style and citation format.
 - **Evidence-Based Answer**: The LLM creates an answer using *only* the provided context, adding strict **Paper-Level Citations** (e.g., `[1]`) that link back to the source documents.
 
-### 🧪 User Interaction Examples
+## 🧪 User Interaction Examples
 
 The following table demonstrates how the agent decides to access the PCG knowledge base based on user intent.
 
