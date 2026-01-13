@@ -11,6 +11,26 @@ The system allows users to interact with their research papers as a searchable k
 
 <img src="agent_articheture.png" width="800"/>
 
+## 💽 Data Source & Feature Schema
+
+The system's knowledge base originates from a curated **Zotero Collection** exported in **CSV format**. The data is parsed and stored in **Hopsworks** as two distinct Feature Groups:
+
+### 1. Metadata Feature Group (`paper_metadata_fg`)
+Used for Phase I (Semantic Scoping). It indexes the document-level summaries.
+
+* **Primary Key**: `paper_id`
+* **Embedding Source**: `combined_text` (Title + Abstract)
+* **Features**:
+    `paper_id`, `title`, `abstract`, `authors`, `year`, `item_type`, `combined_text`, `embedding`
+
+### 2. Chunk Feature Group (`paper_chunks_fg`)
+Used for Phase II (Deep Retrieval). It indexes the granular full-text segments.
+
+* **Primary Key**: `paper_id`, `chunk_index` (Composite Key)
+* **Embedding Source**: `content` (Full-text segment)
+* **Features**:
+    `paper_id`, `chunk_index`, `content`, `year`, `embedding`
+
 ## 🔄 Pipelines Description
 
 The project is built around three core pipelines designed to handle data loading, updates, and the agent itself. These pipelines are modular, keeping data processing (MLOps) separate from the application logic.
@@ -91,6 +111,24 @@ The following table demonstrates how the agent decides to access the PCG knowled
 | **"How is the Diffusion Model applied to PCG signal synthesis?"** | `RAG Search` | **Full RAG Loop**. Scopes with Metadata $\to$ Drills down into Chunks $\to$ Reranks $\to$ Generates Answer. |
 | **"What metrics are used to evaluate the quality of synthetic heart sounds?"** | `RAG Search` | **Full RAG Loop**. Scopes with Metadata $\to$ Drills down into Chunks $\to$ Reranks $\to$ Generates Answer. |
 
+## 🚀 Project Setup Guide
+
+### 1. Environment Setup
+* **Prepare Data**: Export your Zotero library as a CSV file and ensure local PDF paths are accessible.
+* **Configure Keys**: Set your `HOPSWORKS_API_KEY` and `LLM_API_KEY` in the environment variables.
+
+### 2. Run Feature Backfill (Bootstrap)
+* **Execute Backfill Notebook**: Run the backfill script to process the entire Zotero history.
+* **Initialize Store**: This creates and populates the Metadata and Chunk Feature Groups in Hopsworks.
+
+### 3. Run Feature Pipeline (Update)
+* **Execute Feature Pipeline**: Run this script after adding new papers to your Zotero CSV.
+* **Incremental Sync**: Detects changes and processes only new entries to update the Feature Store.
+
+### 4. Run Inference Pipeline (Launch)
+* **Start Agent**: Execute the inference notebook to instantiate the RAG agent.
+* **Access UI**: Locate the **Gradio URL** (e.g., `http://127.0.0.1:7860`) in the output and click to interact.
+  
 ## 📈 Analysis & Future Roadmap
 
 * **Advanced Content Parsing**: Currently, the pipeline treats PDFs as flat text streams, often mixing headers and captions with main content. Future iterations will adopt **Layout-Aware Parsing** to semantically distinguish text, images, and tables for higher-quality retrieval contexts.
