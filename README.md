@@ -77,3 +77,21 @@ In the final phase, the agent generates the answer using the optimized context:
 - **Dynamic Context Assembly**: The **Context Builder** creates the system prompt using the reranked full-text chunks.
 - **In-Context Learning (ICL)**: The prompt is improved with **few-shot examples** to guide the LLM’s style and citation format.
 - **Evidence-Based Answer**: The LLM creates an answer using *only* the provided context, adding strict **Paper-Level Citations** (e.g., `[1]`) that link back to the source documents.
+
+### 🧪 User Interaction Examples
+
+The following table demonstrates how the agent decides to access the PCG knowledge base based on user intent.
+
+| User Query | Intent Classification | System Decision / Action |
+| :--- | :--- | :--- |
+| **"Hello, who are you?"** | `Direct Interaction` | **No Retrieval**. The LLM answers directly using internal instructions regarding its role as an assistant. |
+| **"How is the Diffusion Model applied to PCG signal synthesis?"** | `RAG Search` | **Full RAG Loop**. Scopes with Metadata $\to$ Drills down into Chunks $\to$ Reranks $\to$ Generates Answer. |
+| **"What metrics are used to evaluate the quality of synthetic heart sounds?"** | `RAG Search` | **Full RAG Loop**. Scopes with Metadata $\to$ Drills down into Chunks $\to$ Reranks $\to$ Generates Answer. |
+
+## 📈 Analysis & Future Roadmap
+
+* **Advanced Content Parsing**: Currently, the pipeline treats PDFs as flat text streams, often mixing headers and captions with main content. Future iterations will adopt **Layout-Aware Parsing** to semantically distinguish text, images, and tables for higher-quality retrieval contexts.
+
+* **Hybrid Search with Metadata**: The system currently uses metadata only for embedding and lacks deterministic filtering capabilities. We plan to implement **SQL-like Pre-filtering** to allow strict constraints (e.g., "Papers published after 2023") alongside semantic search.
+
+* **Ensemble Retrieval Strategies**: Relying solely on vector similarity can miss exact keyword matches for specific PCG acronyms. Future work will integrate **Sparse Retrieval (BM25)** with vector search to balance semantic understanding with precise keyword matching.
