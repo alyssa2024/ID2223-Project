@@ -45,105 +45,37 @@ The Inference Pipeline operationalizes the **Paper Reading Agent** and provides 
 
 Together, these components transform the static data in Hopsworks into a dynamic, queryable research assistant.
 
-## 🧠 Agent Execution Model
+## 🧠 RAG Agent Execution Model
 
-The paper reading agent follows a **stateful, retrieval-driven execution model** that tightly couples its internal architecture with a structured inference workflow.  
-From query submission to answer delivery, the agent orchestrates intent routing, multi-stage retrieval, reasoning, and citation-aware response generation.
+The system operates as a specialized **Retrieval-Augmented Generation (RAG) Agent**, designed to bridge the gap between static **Zotero** libraries and dynamic, evidence-based reasoning. Unlike standard RAG implementations, this agent employs a **"Coarse-to-Fine" Agentic Loop**, orchestrated via the **Model Context Protocol (MCP)**, to optimize the quality of the retrieved context before generation.
 
----
+The execution flow consists of four distinct phases:
 
-### 1. Query Intake and Intent Routing
+### 1. Intent Routing (RAG Trigger)
 
-The execution begins when a user submits a natural language query through the user interface.  
-The query is first processed by an **Intent Router**, which classifies the input into one of two categories:
+Every user interaction is first evaluated by the **Intent Router** to determine if external knowledge is required:
+- **Direct Interaction**: General chitchat is handled immediately, bypassing the RAG pipeline.
+- **RAG Activation**: Research-oriented queries trigger the **Agentic Loop**, initializing the state for multi-stage retrieval against the **Hopsworks Feature Store**.
 
-- **Direct interaction queries** (e.g., greetings or self-referential questions), which are answered directly by the language model without retrieval.
-- **Information-seeking queries**, which activate the retrieval-augmented agent workflow.
+### 2. Phase I: Semantic Scoping (Metadata Embedding)
 
-For direct interactions, the agent constructs a minimal prompt, invokes the LLM once, and immediately returns the response to the UI.
+Upon entering the loop, the agent executes the first stage of the RAG pipeline via **MCP**:
+- **Vector Search**: Performs a semantic search using **metadata embeddings** (generated from titles and abstracts of Zotero papers).
+- **Candidate Filtering**: Identifies the top-k most relevant papers to establish a focused search boundary.
+- **Silent Filtering**: These candidates serve solely as a scope constraint and are not passed to the LLM, preventing hallucination based on shallow abstracts.
 
----
+### 3. Phase II: Deep Retrieval & Reranking
 
-### 2. Agent State Initialization
+Immediately after scoping, the system executes a **Forced Deep Dive** to acquire high-granularity evidence:
+- **Chunk Retrieval**: The agent triggers a second MCP tool call to search for **full-text chunk embeddings**, constrained strictly within the candidate `paper_ids` identified in Phase I.
+- **Reranking**: Retrieved chunks undergo a **Reranking process** to re-score and re-order them based on their precise relevance to the specific query query, ensuring the most critical information bubbles to the top.
+- **Context Injection**: The agent state is updated with these optimized, high-relevance chunks, and the loop performs a `continue` to refresh the context window.
 
-For information-seeking queries, the agent initializes an internal **Agent State** that persists throughout inference.  
-This state tracks:
-- current retrieval results
-- the type of the most recent retrieval (`metadata` or `chunks`)
-- intermediate paper identifiers
+### 4. Phase III: Grounded Generation (ICL + Prompt)
 
-The state enables multi-stage retrieval while keeping intermediate steps internal to the agent.
+In the final phase, the agent acts as the **Generator**:
+- **Dynamic Context Assembly**: The **Context Builder** constructs a prompt using the reranked full-text chunks.
+- **In-Context Learning (ICL)**: The prompt is fortified with **few-shot examples** to guide the LLM’s reasoning style and citation format.
+- **Evidence-Based Answer**: The LLM synthesizes an answer using *only* the provided context, appending strict **Paper-Level Citations** (e.g., `[1]`) that link back to the source documents.
 
----
-
-### 3. Metadata Retrieval for Search Scoping
-
-At the start of the retrieval process, the agent detects that no retrieval results are available and performs a **metadata-level semantic search**.
-
-This retrieval stage:
-- searches over paper titles and abstracts
-- retrieves a small set of relevant papers
-- extracts only paper identifiers and high-level metadata
-
-Metadata retrieval is used exclusively to **constrain the search space** and is never exposed to the language model as reasoning context.
-
----
-
-### 4. Forced Transition to Chunk Retrieval
-
-Immediately after metadata retrieval, the agent performs a **forced transition** to full-text retrieval:
-
-- paper identifiers obtained from metadata search are used to constrain chunk-level retrieval
-- detailed text chunks are retrieved from the vector store
-- retrieval results in the agent state are overwritten with chunk-level data
-- the agent explicitly skips LLM invocation at this stage and restarts the inference loop
-
-As a result, the language model remains unaware of the metadata-only retrieval step.
-
----
-
-### 5. Context Construction from Full-Text Chunks
-
-Once chunk-level retrieval results are available, the agent proceeds to construct the reasoning context.
-
-This step:
-- enriches retrieved chunks with corresponding paper titles
-- assembles a structured context using only full-text chunks
-- guarantees that metadata-only content is excluded from the prompt
-
-The **Context Builder** enforces a strict separation between retrieval for scoping and retrieval for reasoning.
-
----
-
-### 6. Prompt Synthesis and LLM Reasoning
-
-The agent synthesizes the final prompt by combining:
-- the original user query
-- the chunk-based context
-- task-specific reasoning instructions
-
-The prompt is passed to the **LLM Reasoning Module**, which produces a structured decision, such as:
-- generating a final answer
-- requesting additional retrieval
-- abstaining due to insufficient evidence
-
-Only chunk-level evidence is visible to the language model during reasoning.
-
----
-
-### 7. Decision Handling and Iterative Control
-
-If the LLM requests further retrieval, the agent executes the corresponding retrieval action and continues the inference loop using the existing agent state.
-
-If the LLM produces an answer, the agent terminates the loop and proceeds to response formatting.
-
----
-
-### 8. Citation Aggregation and UI Response
-
-For answer generation, the agent:
-- groups retrieved chunks by paper identifier
-- assigns stable citation indices
-- formats references at the paper level
-
-The final output consists of a natural language answer and structured citations, which are returned to the user interface and displayed as the final response.
+This architecture ensures a high-fidelity RAG process: **Macro-level search (Metadata) $\to$ Micro-level retrieval (Chunks) $\to$ Quality Optimization (Rerank) $\to$ Grounded Synthesis.**
